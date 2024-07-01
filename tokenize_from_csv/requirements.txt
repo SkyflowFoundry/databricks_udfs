@@ -1,0 +1,3 @@
+pandas==2.2.2
+pyspark==3.5.1
+skyflow==1.15.1
