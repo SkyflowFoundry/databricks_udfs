@@ -1,58 +1,73 @@
-## Tokenize from CSV
+# Tokenize from CSV
 
-Tokenize from CSV is a custom Databricks workbook that enables users to insert and tokenize data to a Skyflow vault.
+This workbook is a sample Databricks UDF that reads data from a CSV file, inserts it into a Skyflow vault, and stores the associated token to Databricks. You can use it as a reference to build your own UDFs.
 
-##### Prerequisites
+## Before you start
 
-Create a Skyflow vault with a schema that is compatible with the CSV input to be tokenized.
+Before you start, you need the following:
 
-This workflow requires the following inputs to be passed when calling the UDF:
+* A Databricks volumne you can write to.
+* Permissions to create a Databricks secret scope.
+* A CSV file, with a data you want to tokenize, stored in your Databricks workspace.
+* A Skyflow vault with a schema that is compatible with the CSV file. See [Create a vault](https://docs.skyflow.com/create-a-vault/). A Quickstart vault works for this example.
+* A Skyflow service account's *credentials.json* file. The service account needs insert and tokenization permissions on the vault. See [Data governance overview](https://docs.skyflow.com/data-governance-overview/).
 
-- **csv_file_path**: path to CSV data file
-- **skyflow_table**: name of the table in Skyflow Vault to insert CSV data
-- **csv_to_skyflow_cols**: A map from CSV column names to related Skyflow column names. Ex: `<"customer_names": "names", "user_email_address": "email", "phone_number": "phone_number">`
+Additionally, gather the following information:
 
-In addition to the input, the workflow requires a config secret to be added to a Databricks Secret Scope. The config should be valid JSON uploaded in the form of a string. You can use a JSON to string converter to accomplish this.
+* Skyflow information:
+  * You Skyflow account ID, vault ID, and vault URL. You can find these in Skyflow Studio.
+  * The name of the table in your Skyflow vault where you want to insert the CSV data. This example uses the table name `persons`.
+* Databricks information:
+  * Your Databricks host, token, and [secret scope](https://docs.databricks.com/en/security/secrets/secret-scopes.html). You can find these in the Databricks UI.
+  * The path to the CSV file in your Databricks workspace. This example uses the path is `/Volumes/main/default/test_volume/fake_data.csv`.
 
-The config must contain:
+## Set up the UDF
 
-- **creds_path**: path to the credentials.json for the service account you want to connect to the vault
-- **vault_url_prefix**: the API URL up to ".com". Ex: https://abcdefg.vault.skyflowapis.com
-- **account_id**: the Skyflow accountID associated with the vault
-- **vault_id**: the ID for your vault
+1. Upload the *credentials.json* file to a Databricks volumne. This example assumes the path is `/Volumes/main/default/test_volume/credentials.json`.
+1. Create a JSON object with you Skyflow information as follows:
 
-The following snippets show a sample config and how to upload it to Databricks secret scope.  
+    ```json
+    {
+        "account_id": "$ACCOUNT_ID",
+        "vault_url_prefix": "$VAULT_URL",
+        "vault_id": "$VAULT_ID",
+        "creds_path": "$CREDENTIALS_PATH"
+    }
+    ```
 
-Raw JSON:
-```JSON
-{
-    "creds_path": "/Volumes/main/default/testvol/databricks-tokenize-demo-creds.json",
-    "vault_url_prefix": "https://abcdefg.vault.skyflowapis.com",
-    "account_id": "account_id_value",
-    "vault_id": "vault_id_value"
-}
-```
+    For example, it might look something like this:
 
-Upload Secret:
-```bash
-curl --request POST "https://${DATABRICKS_HOST}/api/2.0/secrets/put" \
---header "Authorization: Bearer ${DATABRICKS_TOKEN}" \
---data '{
-    "scope": ${DATABRICKS_SCOPE},
-    "key": "${CONFIG_KEY_NAME}",
-    "string_value": "{\"creds_path\":\"/Volumes/main/default/testvol/databricks-tokenize-demo-creds.json\",\"vault_url_prefix\":\"https://abcdefg.vault.skyflowapis.com\", \"vault_id\":\"${VAULT_ID_VALUE}\",\"account_id\":\"${ACCOUNT_ID_VALUE}\"}"
-}'
-```
+    ```json
+    {
+        "account_id": "a451b783713e4424a7d761bb7bbc84eb",
+        "vault_url_prefix": "https://abfc8bee4242.vault.skyflowapis.com",
+        "vault_id": "c35dcf755b60479cae67ae1362e49643",
+        "creds_path": "/Volumes/main/default/test_volume/credentials.json"
+    }
+    ```
 
-- `$DATABRICKS_HOST` is the URL for your databricks instance
-- `$DATABRICKS_TOKEN` is a bearer token which can be obtained through your account settings in the Databricks UI
-- `$DATABRICKS_SCOPE` is the scope for your databricks secrets (see https://docs.databricks.com/en/security/secrets/secret-scopes.html)
-- `$CONFIG_KEY_NAME` is the name for the config secret
+1.  Upload the stringified JSON object to a Databricks secret. You can do this using the Databricks REST API. For example:
 
-##### Using the UDF
+    ```bash
+    curl --request POST "https://${DATABRICKS_HOST}/api/2.0/secrets/put" \
+    --header "Authorization: Bearer ${DATABRICKS_TOKEN}" \
+    --data '{
+        "scope": ${DATABRICKS_SCOPE},
+        "key": "${CONFIG_KEY_NAME}",
+        "string_value": "{\"account_id\":\"$ACCOUNT_ID\",\"vault_url_prefix\":\"$VAULT_URL\",\"vault_id\":\"$VAULT_ID\",\"creds_path\":\"$CREDENTIALS_PATH\"}"
+    }'
+    ```
 
-1. Upload the target CSV file into a Databricks volume. Note the path to this file as `$INPUT_CSV`. You can obtain the full path of the file in Databricks by right-clicking on the file and selecting "copy file path".
-2. Upload the configuration JSON to Databricks secret scope as explained above.
-3. Copy this UDF into a Databricks notebook. Click the `run` button on top of the notebook. This registers (or re-registers) the UDF.
-4. Create a new cell. Select SQL as the language. (You can also skip this step if you plan to use the function outside of Databricks UI).
-5. Call the UDF. Ex: `SELECT tokenizeCSV("/Volumes/main/default/testvol/fake_data.csv", "table_for_csv",  MAP("name", "name", "email", "email")) AS detokenized_data;`
+## Use the UDF
+
+1. Create a map that maps the CSV columns to the Skyflow columns. For example, if `fake_data.csv` has the `customer_names`, `user_email_address`, and `social_security_number` columns, the map could be:
+
+    | CSV column | Skyflow column |
+    |------------|----------------|
+    | customer_names | name |
+    | user_email_address | email_address |
+    | social_security_number | ssn |
+
+1. Copy the contents of the `tokenize_from_csv.py` file into a Databricks notebook. Click the `run` button on top of the notebook. This registers (or re-registers) the UDF.
+1. Create a new cell. Select SQL as the language.
+1. Call the `tokenizeCSV(csv_path, skyflow_table, column_map)` UDF, applying the column maps in CSV,SKYFLOW pairs. For example, `SELECT tokenizeCSV("/Volumes/main/default/testvol/fake_data.csv", "persons",  MAP("customer_names", "name", "user_email_address", "email_address", "social_security_number", "ssn")) AS detokenized_data;`
