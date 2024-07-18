@@ -6,7 +6,7 @@ This workbook is a sample Databricks UDF that reads data from a CSV file, insert
 
 Before you start, you need the following:
 
-* A Databricks volumne you can write to.
+* A Databricks volume you can write to.
 * Permissions to create a Databricks secret scope.
 * A CSV file, with a data you want to tokenize, stored in your Databricks workspace.
 * A Skyflow vault with a schema that is compatible with the CSV file. See [Create a vault](https://docs.skyflow.com/create-a-vault/). A Quickstart vault works for this example.
@@ -23,8 +23,8 @@ Additionally, gather the following information:
 
 ## Set up the UDF
 
-1. Upload the *credentials.json* file to a Databricks volumne. This example assumes the path is `/Volumes/main/default/test_volume/credentials.json`.
-1. Create a JSON object with you Skyflow information as follows:
+1. Upload the *credentials.json* file to a Databricks volume. This example assumes the path is `/Volumes/main/default/test_volume/credentials.json`.
+1. Create a JSON object with your Skyflow information as follows:
 
     ```json
     {
