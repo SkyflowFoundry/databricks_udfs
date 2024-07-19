@@ -46,7 +46,7 @@ Additionally, gather the following information:
     }
     ```
 
-1.  Upload the stringified JSON object to a Databricks secret. You can do this using the Databricks REST API. For example:
+1.  Stringify the JSON object and upload it to a Databricks secret. You can do this using the Databricks REST API. For example:
 
     ```bash
     curl --request POST "https://${DATABRICKS_HOST}/api/2.0/secrets/put" \
@@ -68,6 +68,8 @@ Additionally, gather the following information:
     | user_email_address | email_address |
     | social_security_number | ssn |
 
-1. Copy the contents of the `tokenize_from_csv.py` file into a Databricks notebook. Click the `run` button on top of the notebook. This registers (or re-registers) the UDF.
+1. Copy the contents of the `tokenize_from_csv.py` file into a Databricks notebook.
+1. Update the `CONFIG_SECRET_KEY_NAME` and `DATABRICKS_SECRETS_SCOPE_NAME` with your secret information.
+1. Click the `run` button on top of the notebook. This registers (or re-registers) the UDF.
 1. Create a new cell. Select SQL as the language.
 1. Call the `tokenizeCSV(csv_path, skyflow_table, column_map)` UDF, applying the column maps in CSV,SKYFLOW pairs. For example, `SELECT tokenizeCSV("/Volumes/main/default/testvol/fake_data.csv", "persons",  MAP("customer_names", "name", "user_email_address", "email_address", "social_security_number", "ssn")) AS detokenized_data;`
